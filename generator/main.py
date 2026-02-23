@@ -6,7 +6,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 print("WORKDIR:", os.getcwd())
 np.random.seed(42)
-
+print(">>> NOWA WERSJA CUSTOMER ACTIVE <<<")
 
 # ---------------- DIM_DATE ----------------
 dates = pd.date_range("2023-01-01", "2025-12-31")
@@ -35,7 +35,24 @@ dim_beer = pd.DataFrame({
 
 launch_dict = dim_beer.set_index("beer_id")["launch_date"].to_dict()
 
+# ---------------- BEER SALES PROFILE ----------------
 
+beer_popularity = {
+    1: 1.6,   # Lager – król wolumenu
+    2: 1.2,   # IPA – modne
+    3: 0.6,   # Stout – nisza
+    4: 1.4,   # Pils – klasyka
+    5: 0.9    # Wheat – sezonowe
+}
+
+# sezonowość (mocniejsza)
+beer_seasonality = {
+    1: {"Summer": 1.2, "Winter": 0.9},
+    2: {"Summer": 1.1, "Winter": 1.0},
+    3: {"Summer": 0.7, "Winter": 1.4},
+    4: {"Summer": 1.15, "Winter": 0.95},
+    5: {"Summer": 1.5, "Winter": 0.6}
+}
 # ---------------- DIM_COST_PROFILE ----------------
 
 dim_cost = pd.DataFrame({
@@ -49,14 +66,72 @@ dim_cost = pd.DataFrame({
 
 
 # ---------------- DIM_CUSTOMER ----------------
-dim_customer = pd.DataFrame({
-    "customer_id": range(1,11),
-    "customer_name": [f"Customer_{i}" for i in range(1,11)],
-    "channel": np.random.choice(["Retail","HoReCa","Wholesale","Online"], 10),
-    "region": np.random.choice(["South","North","East","West"], 10),
-    "size": np.random.choice(["Small","Medium","Large"], 10)
-})
 
+wojewodztwa = [
+    "Dolnośląskie", "Kujawsko-Pomorskie", "Lubelskie", "Lubuskie",
+    "Łódzkie", "Małopolskie", "Mazowieckie", "Opolskie",
+    "Podkarpackie", "Podlaskie", "Pomorskie", "Śląskie",
+    "Świętokrzyskie", "Warmińsko-Mazurskie",
+    "Wielkopolskie", "Zachodniopomorskie"
+]
+
+region_map = {
+    "Dolnośląskie": "Zachód",
+    "Lubuskie": "Zachód",
+    "Wielkopolskie": "Zachód",
+    "Zachodniopomorskie": "Zachód",
+
+    "Pomorskie": "Północ",
+    "Warmińsko-Mazurskie": "Północ",
+    "Podlaskie": "Północ",
+    "Kujawsko-Pomorskie": "Północ",
+
+    "Mazowieckie": "Wschód",
+    "Lubelskie": "Wschód",
+    "Podkarpackie": "Wschód",
+    "Świętokrzyskie": "Wschód",
+
+    "Śląskie": "Południe",
+    "Małopolskie": "Południe",
+    "Opolskie": "Południe",
+    "Łódzkie": "Centrum"
+}
+
+real_customer_names = [
+    "EuroMarket Sp. z o.o.",
+    "Polskie Hurtownie FMCG SA",
+    "Regionalna Sieć Sklepów ALFA",
+    "Grupa Dystrybucyjna VISTULA",
+    "Centrum Handlowe BALTIC",
+    "MaxTrade Polska",
+    "Horeca Partner Group",
+    "Sklepy Spożywcze NOVA",
+    "InterBeer Distribution",
+    "Detal Plus SA"
+]
+
+selected_woj = np.random.choice(wojewodztwa, 10, replace=False)
+
+dim_customer = pd.DataFrame({
+    "customer_id": range(1, 11),
+    "customer_name": real_customer_names,
+    "channel": np.random.choice(["Retail", "HoReCa", "Wholesale", "Online"], 10),
+    "wojewodztwo": selected_woj,
+    "macro_region": [region_map[w] for w in selected_woj],
+    "country": "Poland",
+    "size": np.random.choice(["Small", "Medium", "Large"], 10)
+})
+# Mnożnik siły zakupowej klienta
+size_multiplier = {
+    "Small": 0.6,
+    "Medium": 1.0,
+    "Large": 2.2
+}
+
+customer_power = {
+    row.customer_id: size_multiplier[row.size] * np.random.uniform(0.8, 1.2)
+    for row in dim_customer.itertuples()
+}
 
 # ---------------- DIM_PLANT ----------------
 dim_plant = pd.DataFrame({
@@ -284,73 +359,102 @@ df_quality = pd.DataFrame(quality_rows, columns=[
 
 sales_rows = []
 
+# lookup sezonu robimy raz
+season_lookup = dim_date.set_index("date")["season"].to_dict()
+
 for idx, row in df_production.iterrows():
 
     batch_id = row["batch_id"]
     date = row["date"]
     beer_id = row["beer_id"]
     plant = row["plant"]
-    
     produced_qty = row["produced_volume_l"]
+
     beer_launch = launch_dict[beer_id]
-
     if date < beer_launch:
-     continue
+        continue
 
-    # KOREKTA 1: Sprzedaż jako funkcja produkcji
+    # ---- RAMP ----
     days_since_launch = (date - beer_launch).days
+    ramp_factor = days_since_launch / 90 if days_since_launch < 90 else 1
 
-    if days_since_launch < 90:
-        ramp_factor = days_since_launch / 90
-    else:
-        ramp_factor = 1
-
+    # ---- BAZOWY RATIO ----
     base_ratio = np.random.normal(0.9, 0.05)
     base_ratio = np.clip(base_ratio, 0.75, 0.98)
 
-    sell_ratio = base_ratio * ramp_factor
+    popularity = beer_popularity[beer_id]
 
-    
-    sellable = int(produced_qty * sell_ratio)
+    season = season_lookup[date]
+    season_mult = beer_seasonality.get(beer_id, {}).get(season, 1.0)
+
+    sell_ratio = base_ratio * ramp_factor * popularity * season_mult
+    sell_ratio = min(sell_ratio, 0.98)
+
+    total_to_sell = int(produced_qty * sell_ratio)
+
+    if total_to_sell <= 0:
+        continue
+
+    # ---- WYBÓR KLIENTÓW (ważony) ----
+    weights = np.array([
+        customer_power[cid] for cid in dim_customer["customer_id"]
+    ])
+    weights = weights / weights.sum()
 
     customers = np.random.choice(
         dim_customer["customer_id"],
         size=np.random.randint(2,5),
-        replace=False
+        replace=False,
+        p=weights
     )
 
-    remaining = sellable
+    # ---- PROPORCJONALNY PODZIAŁ ----
+    powers = np.array([customer_power[c] for c in customers])
+    powers = powers / powers.sum()
 
-    for cust in customers:
+    quantities = (powers * total_to_sell).astype(int)
 
-        if remaining <= 0:
-            break
+    # żeby nie zgubić reszty po zaokrągleniu
+    diff = total_to_sell - quantities.sum()
+    if diff > 0:
+        quantities[0] += diff
 
-        qty = np.random.randint(
-            int(remaining*0.2),
-            int(remaining*0.5)+1
-        )
+    # ---- CENA ----
+    price = dim_beer.loc[
+        dim_beer["beer_id"] == beer_id,
+        "base_price"
+    ].values[0]
 
-        qty = min(qty, remaining)
-        remaining -= qty
+    for cust, qty in zip(customers, quantities):
 
-        price = dim_beer.loc[
-            dim_beer["beer_id"]==beer_id,
-            "base_price"
-        ].values[0]
+        if qty <= 0:
+            continue
 
-        discount = np.random.uniform(0,0.15)
+        # ---- RABATY ----
+        if beer_id == 3:
+            discount = np.random.uniform(0, 0.07)
+        elif beer_id == 1:
+            discount = np.random.uniform(0.05, 0.18)
+        elif beer_id == 5:
+            discount = np.random.uniform(0.08, 0.20)
+        else:
+            discount = np.random.uniform(0.03, 0.12)
 
-        revenue = qty * price * (1-discount)
+        revenue = qty * price * (1 - discount)
 
         channel = dim_customer.loc[
-            dim_customer["customer_id"]==cust,
+            dim_customer["customer_id"] == cust,
             "channel"
         ].values[0]
 
-        region = dim_customer.loc[
-            dim_customer["customer_id"]==cust,
-            "region"
+        woj = dim_customer.loc[
+            dim_customer["customer_id"] == cust,
+            "wojewodztwo"
+        ].values[0]
+
+        macro = dim_customer.loc[
+            dim_customer["customer_id"] == cust,
+            "macro_region"
         ].values[0]
 
         sales_rows.append([
@@ -363,9 +467,9 @@ for idx, row in df_production.iterrows():
             qty,
             revenue,
             discount,
-            region
+            woj,
+            macro
         ])
-
 
 df_sales = pd.DataFrame(
     sales_rows,
@@ -379,7 +483,8 @@ df_sales = pd.DataFrame(
         "qty_l",
         "revenue",
         "discount",
-        "region"
+        "wojewodztwo",
+        "macro_region"
     ]
 )
 
@@ -539,8 +644,13 @@ df_inventory = pd.DataFrame(
 
 
 # ---------------- zapis do bazy ----------------
-db_path = os.path.join("..", "database", "brewery.duckdb")
+db_dir = os.path.join("..", "database")
+os.makedirs(db_dir, exist_ok=True)
+
+db_path = os.path.join(db_dir, "brewery.duckdb")
 con = duckdb.connect(db_path)
+
+print("DB PATH:", os.path.abspath(db_path))
 
 con.execute("CREATE OR REPLACE TABLE fact_sales AS SELECT * FROM df_sales")
 con.execute("CREATE OR REPLACE TABLE fact_production AS SELECT * FROM df_production")
