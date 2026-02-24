@@ -6,7 +6,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 print("WORKDIR:", os.getcwd())
 np.random.seed(42)
-print(">>> NOWA WERSJA CUSTOMER ACTIVE <<<")
+print(">>> feat: improve inventory logic and enable stockout KPI calculation <<<")
 
 # ---------------- DIM_DATE ----------------
 dates = pd.date_range("2023-01-01", "2025-12-31")
@@ -340,11 +340,12 @@ for idx, row in df_production.iterrows():
     beer_id = row['beer_id']
     date = row['date']
     # losowo generujemy defekty
-    if np.random.rand() < 0.2:  # 20% partii ma defekty
+    if np.random.rand() < 0.08:  # 8% partii ma defekty
         num_defects = np.random.randint(1,3)
         for _ in range(num_defects):
             defect_type = np.random.choice(dim_defect['defect_type'])
-            defect_qty = np.random.randint(1,50)
+            defect_pct = np.random.uniform(0.002, 0.01)  # 0.2% – 1%
+            defect_qty = int(row["produced_volume_l"] * defect_pct)
             severity = np.random.choice(["Low","Medium","High"])
             root_cause = np.random.choice(["Operator","Equipment","Raw material"])
             action = np.random.choice(["Rework","Discard","Adjust process"])
@@ -388,7 +389,7 @@ for idx, row in df_production.iterrows():
     season_mult = beer_seasonality.get(beer_id, {}).get(season, 1.0)
 
     sell_ratio = base_ratio * ramp_factor * popularity * season_mult
-    sell_ratio = min(sell_ratio, 0.98)
+    sell_ratio = min(sell_ratio, 0.88)
 
     total_to_sell = int(produced_qty * sell_ratio)
 
@@ -593,7 +594,7 @@ for date in dim_date["date"]:
             key = (plant, beer)
 
             stock_yesterday = current_stock.get(key, 0)
-
+            price_lookup = dim_beer.set_index("beer_id")["base_price"].to_dict()
             # KOREKTA 3: Ograniczenie produkcji przy overstock
             prod_today_raw = prod_dict.get((date, plant, beer), 0)
             if stock_yesterday > target_stock[plant]:
@@ -605,8 +606,14 @@ for date in dim_date["date"]:
             sold_today = sales_dict.get((date, plant, beer), 0)
 
             # Nowy stan
-            stock_today = stock_yesterday + prod_today - sold_today
-            stock_today = max(stock_today, 0)
+            available = stock_yesterday + prod_today
+
+            if sold_today > available:
+                lost_sales = sold_today - available
+                stock_today = 0
+            else:
+                lost_sales = 0
+                stock_today = available - sold_today
 
             # Status
             if stock_today == 0:
@@ -617,12 +624,14 @@ for date in dim_date["date"]:
                 status = "Overstock"
             else:
                 status = "OK"
-
+            stock_value = stock_today * price_lookup[beer]
             inventory_rows.append([
                 date,
                 plant,
                 beer,
                 stock_today,
+                stock_value,
+                lost_sales,
                 status
             ])
 
@@ -634,8 +643,10 @@ df_inventory = pd.DataFrame(
     columns=[
         "date",
         "plant",
-        "beer_id",
+        "beer_id",        
         "stock_l",
+        "stock_value",
+        "lost_sales",
         "status"
     ]
 )
