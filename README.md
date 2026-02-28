@@ -1,171 +1,246 @@
-🍺 Brewery BI — End‑to‑End Analytics Project
-Python (AI‑assisted) • SQL • DuckDB • Power BI
+🍺 Brewery BI — End-to-End Analytics Engineering Project
+
+Python (AI-assisted) • SQL • DuckDB • Power BI
 
 📌 Overview
-Brewery BI is an end‑to‑end analytics project designed to demonstrate practical skills in data engineering, analytics engineering, and business intelligence.
-The project simulates a full analytical workflow for a fictional brewery, covering:
 
-data generation (AI‑assisted Python),
+Brewery BI is an end-to-end analytics engineering project that simulates a realistic BI environment for a fictional brewery.
 
-SQL transformations and business logic,
+The project demonstrates practical, production-oriented skills across:
 
-multi‑layer data modeling (Bronze → Silver → Gold),
+Data engineering
 
-analytical MARTs,
+Analytics engineering
 
-semantic modeling in Power BI,
+BI modeling
 
-dashboards for management, sales, production, and logistics.
+KPI design and DAX logic
 
-The goal is to showcase real‑world BI/Data Engineering capabilities in a clean, reproducible, and well‑documented structure.
+It covers the full lifecycle of data:
 
-🧱 Architecture
+Synthetic data generation → SQL transformations → Analytical modeling → Semantic layer → Executive dashboards
+
+The goal is to present a clean, reproducible example of a modern BI workflow built with lightweight, scalable tools.
+
+🏗 Architecture
+
+The repository is structured into clear functional layers:
+
 brewery_bi/
 │
-├── data/                 # Generated and raw datasets
-├── python/               # AI-assisted Python scripts for data generation
-├── sql/                  # SQL models: Bronze, Silver, Gold, MARTs
-├── duckdb/               # DuckDB database files
-├── powerbi/              # .pbix file + screenshots
-└── README.md             # Project documentation
+├── README.md
+│
+├── database/
+│   └── brewery.duckdb
+│
+├── generator/
+│   ├── main.py
+│   ├── create_dimdate_view.py
+│   ├── create_mart_monthly.py
+│   │
+│   └── sql/
+│       ├── create_dimdate_view.sql
+│       └── mart_margin_month.sql
+│
+├── power bi/
+│   └── Brewery_report.pbix
+│
+└── screenshots/
+Layer Responsibilities
 
-AI‑assisted Python → SQL Transformations → DuckDB → Power BI Semantic Model → Dashboards
-1. Data Generation (AI‑assisted Python)
-Python is used with AI support to generate realistic datasets for:
+generator/
+Python-based synthetic data generator with AI-assisted logic.
 
-sales,
+database/
+DuckDB analytical database serving as the transformation engine.
 
-production,
+generator/sql/
+SQL logic for building dimensions and analytical marts.
 
-logistics,
+power bi/
+Semantic model and dashboard implementation.
 
-quality,
+screenshots/
+Portfolio visuals of final dashboards.
 
-customers,
+🧪 Data Generation (Python + AI)
 
-products (beer types),
+Synthetic operational data is generated using Python scripts enhanced with AI-assisted behavioral modeling.
 
-plants and regions.
+The generator simulates realistic brewery operations across:
 
-The generated data includes realistic patterns such as seasonality, production variability, downtime, waste, and margin behavior.
+Sales
 
-2. SQL Transformations & Business Logic
+Production
+
+Logistics
+
+Quality
+
+Customers
+
+Products (beer types)
+
+Plants and regions
+
+The dataset includes:
+
+Seasonality patterns
+
+Production variability
+
+Downtime events
+
+Waste and defect behavior
+
+Margin fluctuations
+
+Inventory dynamics
+
+The objective is to produce data that behaves like real operational systems rather than random mock data.
+
+🛠 SQL Transformations & Modeling
+
 All transformations are executed in DuckDB using SQL.
 
-Key components:
+The project follows a layered modeling approach:
 
-Date dimension with full calendar logic
+Date dimension creation
 
-Bronze layer — raw structured data
+Standardized Silver-layer tables
 
-Silver layer — cleaned and standardized tables
+Gold-layer analytical models
 
-Gold layer — analytical models and MARTs
+Monthly KPI marts
 
-KPI logic implemented in SQL:
+Business logic implemented in SQL includes:
 
-Revenue
+Revenue and gross margin calculations
 
-Margin
+Production volume metrics
 
-Produced Volume
+OEE computation
 
-OEE
+Waste and defect rate
 
-Waste
+Inventory coverage (days)
 
-Inventory Coverage
+YoY, MoM, and rolling metrics
 
-YoY, MoM, rolling metrics
+The structure mirrors modern analytics engineering practices used in production BI systems.
 
-3. DuckDB as the Analytical Engine
-DuckDB is used as a lightweight, high‑performance analytical database.
+⚡ DuckDB as Analytical Engine
 
-Benefits:
+DuckDB acts as the central transformation engine.
 
-SQL on local files
+Why DuckDB:
 
-fast columnar execution
+High-performance columnar execution
 
-perfect for BI prototyping
+Lightweight and file-based
 
-easy integration with Power BI
+No server setup required
 
-4. Power BI Semantic Model & Dashboards
-The Power BI report includes:
+Seamless integration with Power BI
 
-Pages
-Management — high‑level KPIs (Revenue, Margin, Volume, Inventory Coverage)
+Ideal for analytics prototyping
 
-Sales & Market — revenue by region, customer, channel, time
+It provides a practical example of local-first analytics architecture.
 
-Production & Quality — OEE, downtime, waste, defect rate
+📊 Power BI Semantic Model & Dashboards
 
-Logistics — stock levels, inventory coverage, daily sales
+The Power BI report is built on a star-schema semantic model.
 
-Drill‑down / Drill‑through — product‑level and plant‑level details
+Dashboard Pages
 
-DAX Highlights
+Executive Overview
+Revenue, Margin, Volume, Inventory Coverage KPIs
+
+Sales & Market
+Performance by region, customer, channel, and time
+
+Production & Quality
+OEE, downtime, waste, defect rate
+
+Logistics
+Stock levels, inventory coverage, daily sales trends
+
+Beer Performance (Drill-through)
+Product-level analysis with dynamic filtering
+
+🧮 DAX Highlights
+
 Time intelligence (YoY, MoM, YTD)
 
-KPI logic with CALCULATE + VAR patterns
+Rolling window calculations
 
-Rolling windows
+KPI delta logic using VAR patterns
 
-Dynamic drill‑through filters
+Conditional formatting measures
 
-Star Schema semantic model
+Dynamic drill-through context handling
 
-📂 Repository Structure
-Kod
-brewery_bi/
-│
-├── data/                 # Generated and raw datasets
-├── python/               # AI-assisted Python scripts for data generation
-├── sql/                  # SQL models: Bronze, Silver, Gold, MARTs
-├── duckdb/               # DuckDB database files
-├── powerbi/              # .pbix file + screenshots
-└── README.md             # Project documentation
+Clean star-schema optimization
+
+The model separates business logic from visuals and follows performance-oriented DAX patterns.
+
 🧰 Tech Stack
-SQL (DuckDB, Firebird SQL, T‑SQL)
 
-Power BI (DAX, semantic modeling, dashboards)
+SQL (DuckDB, T-SQL)
 
-Python (AI‑assisted)
+Power BI (DAX, semantic modeling, dashboard design)
+
+Python (data generation & orchestration)
 
 DuckDB
 
 Git / GitHub
 
-ERP experience: Rekord.ERP (Firebird DB), Microsoft Dynamics NAV
+🎯 Purpose
 
-🎯 Purpose of the Project
-This project was created to demonstrate practical skills required for roles such as:
+This project demonstrates job-ready skills relevant to roles such as:
 
 BI Engineer
 
 Analytics Engineer
 
-Data Engineer (Junior/Mid)
+Data Engineer
 
 Power BI Developer
 
-It reflects real‑world BI workflows: modeling, SQL transformations, KPI logic, DAX, and dashboard design.
+It reflects real-world BI workflows:
 
-🚧 Work in Progress
-The project is actively developed. Upcoming improvements:
+Data modeling
 
-automated pipeline (dbt or Python orchestration),
+SQL transformations
 
-data quality tests,
+KPI design
 
-CI/CD for Power BI and DuckDB,
+Time intelligence logic
 
-documentation of SQL models,
+Drill-through analytics
 
-extended drill‑through analytics.
+Executive dashboard development
+
+🚧 Roadmap / Improvements
+
+Planned enhancements:
+
+dbt-based transformation layer
+
+Data quality testing
+
+Automated orchestration pipeline
+
+CI/CD for Power BI artifacts
+
+Extended SQL model documentation
+
+Predictive and scenario-based analytics
 
 📬 Contact
-Bartłomiej Lachendrowicz  
+
+Bartłomiej Lachendrowicz
 📧 bartlomiej.lachendrowicz@gmail.com
-🔗 GitHub: github.com/grubyyyyy  (recommended to rename for professional branding)
+
+🔗 GitHub: github.com/blachendrowicz
